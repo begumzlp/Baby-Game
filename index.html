@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pati Bebek Tesisi</title>
+    <!-- Tatlı Biberon Emojisi Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍼</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+   <!-- Giriş / Kayıt Ekranı -->
+    <div id="authScreen" class="auth-container">
+        <!-- Giriş Kutusu -->
+        <div id="loginBox" class="auth-box">
+            <h2>🍼 Pati Bebek Tesisi 🍼</h2>
+            <p>bebek cafesi simülasyonuna hoş geldin!</p>
+            
+            <div id="authFormArea">
+                <input type="text" id="usernameInput" placeholder="Nickname" onkeydown="checkEnter(event)">
+                <div style="width: 100%; margin-bottom: 12px;">
+                    <input type="password" id="passwordInput" placeholder="Şifre" onkeydown="checkEnter(event)" style="width: 100%; margin-bottom: 0;">
+                </div>
+                <div class="auth-buttons">
+                    <button class="game-btn primary-btn" onclick="handleLogin()">Giriş Yap</button>
+                    <button class="game-btn secondary-btn" onclick="showRegisterBox()">Kayıt Ol</button>
+                </div>
+            </div>
+            <span id="authError" class="error-text"></span>
+        </div>
+
+        <!-- Ayrı Kayıt Kutusu (Başlangıçta gizli) -->
+        <div id="registerBox" class="auth-box" style="display: none;">
+            <h2>✨ Yeni Hesap Oluştur ✨</h2>
+            <p>Tesisini kurmak için hemen kayıt ol!</p>
+            
+            <div id="registerFormArea">
+                <input type="text" id="regUsernameInput" placeholder="Yeni Nickname" onkeydown="checkRegisterEnter(event)">
+                <div style="width: 100%; margin-bottom: 12px;">
+                    <input type="password" id="regPasswordInput" placeholder="Yeni Şifre" onkeydown="checkRegisterEnter(event)" style="width: 100%; margin-bottom: 0;">
+                </div>
+                <div class="auth-buttons">
+                    <button class="game-btn primary-btn" onclick="handleRegister()">Kayıt Ol & Başla</button>
+                    <button class="game-btn secondary-btn" onclick="showLoginBox()">Geri Dön</button>
+                </div>
+            </div>
+            <span id="regAuthError" class="error-text"></span>
+        </div>
+    </div> 
+
+    <!-- Oyun Ekranı -->
+    <div id="gameScreen" class="game-container" style="display: none;">
+        <header class="game-header">
+            <div class="header-top">
+                <div class="welcome-text" onclick="openProfileModal()" style="cursor: pointer;" title="Profili Aç">👤 <span id="welcomeUser">Oyuncu</span></div>
+                <button class="menu-btn" onclick="openPlayersListModal()">👥 Oyuncular</button>
+                <button class="logout-btn" onclick="handleLogout()">Çıkış Yap 🚪</button>
+            </div>
+            <h1>🍼 Pati Bebek Tesisi 🍼</h1>
+            <div class="stats-bar">
+                <div class="stat-item">🪙 <span id="gold">200</span></div>
+                <div class="stat-item">🍲 <span id="soupCount">0</span></div>
+                <div class="stat-item">🍼 Süt: <span id="milkCount">0</span></div>
+                <div class="stat-item">🥣 Mama: <span id="foodCount">0</span></div>
+                <div class="stat-item" onclick="openCollection()" style="cursor:pointer;">👶 Bebekler (<span id="collectionCount">0</span>)</div>
+                <div class="stat-item">🏠 Tesis: <span id="stationCount">2</span>/<span id="maxStationCount">20</span></div>
+            </div>
+        </header>
+
+        <main class="game-board">
+            <div class="left-layout">
+                <section class="stations-section">
+                    <h2>Üretim Hatları</h2>
+                    <div class="stations-grid" id="stationsContainer"></div>
+                </section>
+                <section class="control-section">
+                    <div class="panel-box">
+                        <h2>Bekleme Salonu (Kreş)</h2>
+                        <div class="idle-babies" id="idleBabiesContainer"></div>
+                        <button class="game-btn primary-btn" onclick="hireBaby()">Yeni Bebek Al (<span id="hireCost">30</span> 🪙)</button>
+                    </div>
+                </section>
+            </div>
+            
+            <div class="right-sidebar">
+                <h2 class="sidebar-title">Görevler</h2>
+                <div class="quests-container" id="questsContainer"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Koleksiyon Modalı -->
+    <div id="collectionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeCollection()">&times;</span>
+            <h2>Bebek Koleksiyonu</h2>
+            <div class="collection-grid" id="collectionGrid"></div>
+        </div>
+        <span class="close-btn" onclick="closeProfileModal()">✕</span>
+    </div>
+
+    <!-- Bebek Detay Modalı -->
+    <div id="babyDetailModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeBabyDetail()">&times;</span>
+            <div id="babyDetailBody"></div>
+        </div>
+        <span class="close-btn" onclick="closeProfileModal()">✕</span>
+    </div>
+
+    <!-- Profil Modalı -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeProfileModal()">&times;</span>
+            <h2>Oyuncu Profili</h2>
+            <div id="profileContent" style="margin-top: 10px;"></div>
+        </div>
+        <span class="close-btn" onclick="closeProfileModal()">✕</span>
+    </div>
+
+    <!-- Diğer Oyuncular Listesi Modalı -->
+    <div id="playersListModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closePlayersListModal()">&times;</span>
+            <h2>Diğer Oyuncular</h2>
+            <div id="playersListContent" style="margin-top: 10px; max-height: 50vh; overflow-y: auto;"></div>
+        </div>
+        <span class="close-btn" onclick="closeProfileModal()">✕</span>
+    </div>
+
+    <!-- Başka Oyuncu Detay Modalı -->
+    <div id="otherPlayerDetailModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeOtherPlayerModal()">&times;</span>
+            <h2>Oyuncu Detayı</h2>
+            <div id="otherPlayerContent" style="margin-top: 10px;"></div>
+        </div>
+        <span class="close-btn" onclick="closeProfileModal()">✕</span>
+    </div>
+
+    <!-- Seviye Atlama Tebrik Modalı -->
+    <div id="levelUpModal" class="modal" onclick="closeLevelUpModal()" style="display: none; cursor: pointer;">
+        <div class="modal-content" style="text-align: center; border: 3px solid #ff8fab; background: #fff0f3;" onclick="event.stopPropagation()">
+            <h2 id="levelUpTitle" style="color: #ff5c8a; font-size: 1.4rem; margin-bottom: 10px;">🎉 Seviye Atladın! 🎉</h2>
+            <p id="levelUpRewards" style="font-size: 0.95rem; line-height: 1.6; color: #4a4a4a; margin-bottom: 20px;"></p>
+            <button class="game-btn primary-btn" onclick="closeLevelUpModal()">Harika, Devam Et! ✨</button>
+            <p style="font-size: 0.75rem; color: #888; margin-top: 10px; font-style: italic;">(Kapatmak için ekrandaki herhangi bir yere veya butona dokunabilirsin)</p>
+        </div>
+        <span class="close-btn" onclick="closeProfileModal()">✕</span>
+    </div>
+
+    <div id="customToast">Yeterli altın yok!</div>
+    <script src="script.js"></script>
+</body>
+</html>
