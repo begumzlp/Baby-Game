@@ -53,18 +53,20 @@
     <div id="gameScreen" class="game-container" style="display: none;">
         <header class="game-header">
             <div class="header-top">
-                <div class="welcome-text" onclick="openProfileModal()" style="cursor: pointer;" title="Profili Aç">👤 <span id="welcomeUser">Oyuncu</span></div>
+                <!-- Kullanıcı adı ve seviye burada birleşti -->
+                <div class="welcome-text" onclick="openProfileModal()" style="cursor: pointer;" title="Profili Aç">👤 <span id="welcomeUser">Oyuncu</span> (<span id="userLevelText">Sv.1</span>)</div>
                 <button class="menu-btn" onclick="openPlayersListModal()">👥 Oyuncular</button>
                 <button class="logout-btn" onclick="handleLogout()">Çıkış Yap 🚪</button>
             </div>
             <h1>🍼 Pati Bebek Tesisi 🍼</h1>
             <div class="stats-bar">
+                <!-- Her bir item için sabit genişlik ve hizalama eklendi -->
                 <div class="stat-item">🪙 <span id="gold">200</span></div>
                 <div class="stat-item">🍲 <span id="soupCount">0</span></div>
                 <div class="stat-item">🍼 Süt: <span id="milkCount">0</span></div>
                 <div class="stat-item">🥣 Mama: <span id="foodCount">0</span></div>
                 <div class="stat-item" onclick="openCollection()" style="cursor:pointer;">👶 Bebekler (<span id="collectionCount">0</span>)</div>
-                <div class="stat-item">🏠 Tesis: <span id="stationCount">2</span>/<span id="maxStationCount">20</span></div>
+                <div class="stat-item">🏠 Tesis: <span id="stationCount">2</span>/20</div>
             </div>
         </header>
 
@@ -97,7 +99,6 @@
             <h2>Bebek Koleksiyonu</h2>
             <div class="collection-grid" id="collectionGrid"></div>
         </div>
-        <span class="close-btn" onclick="closeProfileModal()">✕</span>
     </div>
 
     <!-- Bebek Detay Modalı -->
@@ -106,7 +107,6 @@
             <span class="close-btn" onclick="closeBabyDetail()">&times;</span>
             <div id="babyDetailBody"></div>
         </div>
-        <span class="close-btn" onclick="closeProfileModal()">✕</span>
     </div>
 
     <!-- Profil Modalı -->
@@ -116,7 +116,6 @@
             <h2>Oyuncu Profili</h2>
             <div id="profileContent" style="margin-top: 10px;"></div>
         </div>
-        <span class="close-btn" onclick="closeProfileModal()">✕</span>
     </div>
 
     <!-- Diğer Oyuncular Listesi Modalı -->
@@ -126,7 +125,6 @@
             <h2>Diğer Oyuncular</h2>
             <div id="playersListContent" style="margin-top: 10px; max-height: 50vh; overflow-y: auto;"></div>
         </div>
-        <span class="close-btn" onclick="closeProfileModal()">✕</span>
     </div>
 
     <!-- Başka Oyuncu Detay Modalı -->
@@ -136,7 +134,6 @@
             <h2>Oyuncu Detayı</h2>
             <div id="otherPlayerContent" style="margin-top: 10px;"></div>
         </div>
-        <span class="close-btn" onclick="closeProfileModal()">✕</span>
     </div>
 
     <!-- Seviye Atlama Tebrik Modalı -->
@@ -147,7 +144,6 @@
             <button class="game-btn primary-btn" onclick="closeLevelUpModal()">Harika, Devam Et! ✨</button>
             <p style="font-size: 0.75rem; color: #888; margin-top: 10px; font-style: italic;">(Kapatmak için ekrandaki herhangi bir yere veya butona dokunabilirsin)</p>
         </div>
-        <span class="close-btn" onclick="closeProfileModal()">✕</span>
     </div>
 
     <div id="customToast">Yeterli altın yok!</div>
