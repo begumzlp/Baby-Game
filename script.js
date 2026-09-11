@@ -32,14 +32,15 @@ function saveDatabase(db) { localStorage.setItem("pati_bebek_app_db_v2", JSON.st
 const defaultQuests = [
     { id: 1, type: 'produce', desc: '50 Ürün Üret', target: 50, current: 0, rewardType: 'milk', rewardCount: 2, completed: false },
     { id: 2, type: 'hire', desc: '3 Bebek İşe Al', target: 3, current: 0, rewardType: 'food', rewardCount: 2, completed: false },
-    { id: 3, type: 'upgrade', desc: '5 Kez Tesis Yükselt', target: 5, current: 0, rewardType: 'milk', rewardCount: 3, completed: false },
-    { id: 4, type: 'level', desc: 'Sv.3 Bebek Yetiştir', target: 3, current: 0, rewardType: 'food', rewardCount: 3, completed: false },
-    { id: 5, type: 'produce', desc: '200 Ürün Üret', target: 200, current: 0, rewardType: 'milk', rewardCount: 5, completed: false },
-    { id: 6, type: 'hire', desc: '8 Bebek İşe Al', target: 8, current: 0, rewardType: 'food', rewardCount: 5, completed: false }
+    { id: 3, type: 'upgrade', desc: '5 Kez Tesis Yükselt', target: 5, current: 0, rewardType: 'milk', rewardCount: 2, completed: false },
+    { id: 4, type: 'level', desc: 'Sv.3 Bebek Yetiştir', target: 3, current: 0, rewardType: 'food', rewardCount: 2, completed: false },
+    { id: 5, type: 'produce', desc: '200 Ürün Üret', target: 200, current: 0, rewardType: 'milk', rewardCount: 2, completed: false },
+    { id: 6, type: 'hire', desc: '8 Bebek İşe Al', target: 8, current: 0, rewardType: 'food', rewardCount: 2, completed: false }
 ];
 
 let currentUser = null;
 let gold = 200;
+let earnedInCurrentLevel = 200; // Sadece kazanılan parayı takip eden ve seviye atlayınca sıfırlanan global sayaç
 let soupCount = 0;
 let milkCount = 2; 
 let foodCount = 2; 
@@ -80,9 +81,9 @@ function initSession() {
 window.addEventListener("DOMContentLoaded", () => { loadGameData(); });
 
 function handleRegister() {
-    const user = document.getElementById("usernameInput").value.trim();
-    const pass = document.getElementById("passwordInput").value.trim();
-    const err = document.getElementById("authError");
+    const user = document.getElementById("regUsernameInput").value.trim();
+    const pass = document.getElementById("regPasswordInput").value.trim();
+    const err = document.getElementById("regAuthError");
     
     if (!user || !pass) { 
         err.style.color = "#d83b68";
@@ -107,11 +108,19 @@ function handleRegister() {
     ];
 
     let newUser = {
-        username: user, password: pass, gold: 200, soupCount: 0, milkCount: 2, foodCount: 2, hireCost: 30,
+        username: user, 
+        password: pass, 
         level: 1,
+        registerDate: new Date().toLocaleDateString('tr-TR'),
+        gold: 200, 
+        earnedInCurrentLevel: 200,
+        soupCount: 0, 
+        milkCount: 2, 
+        foodCount: 2, 
+        hireCost: 30,
         stations: [], 
         allBabies: initialBabies, 
-        idleBabies: [initialBabies[1]],
+        idleBabies: [], 
         quests: JSON.parse(JSON.stringify(defaultQuests)),
         avatar: "baby1.jpg",
         lastLoginDate: "",
@@ -125,11 +134,6 @@ function handleRegister() {
     localStorage.setItem("pati_bebek_aktif_oturum_v2", currentUser.username);
     loadUserData();
     
-    if (stations.length > 0 && stations[0].baby === null && allBabies.length > 0) {
-        stations[0].baby = allBabies[0];
-        idleBabies = idleBabies.filter(b => b.id !== allBabies[0].id);
-    }
-
     document.getElementById("authScreen").style.display = "none";
     document.getElementById("gameScreen").style.display = "flex";
     document.getElementById("welcomeUser").innerText = currentUser.username;
@@ -185,40 +189,57 @@ function handleLogout() {
 
 function loadUserData() {
     gold = currentUser.gold || 200; 
+    // Sayaç veritabanından alınır, yoksa gold miktarı (ilk giriş) baz alınır
+    earnedInCurrentLevel = currentUser.earnedInCurrentLevel !== undefined ? currentUser.earnedInCurrentLevel : gold;
     soupCount = currentUser.soupCount || 0; 
     milkCount = currentUser.milkCount !== undefined ? currentUser.milkCount : 2;
     foodCount = currentUser.foodCount !== undefined ? currentUser.foodCount : 2;
     hireCost = currentUser.hireCost || 30;
     avatar = currentUser.avatar || "baby1.jpg";
-    currentUser.level = currentUser.level || (1 + Math.floor(soupCount / 50));
+    currentUser.level = currentUser.level || (1 + Math.floor(soupCount / 2000));
     
     allBabies = currentUser.allBabies || []; 
     idleBabies = currentUser.idleBabies || [];
     quests = currentUser.quests || JSON.parse(JSON.stringify(defaultQuests));
 
     let unlockedCount = Math.min(20, 1 + currentUser.level); 
-
     let savedStations = currentUser.stations || [];
     stations = [];
 
+    let assignedBabyIds = new Set();
+    let tempStations = [];
     for (let i = 0; i < unlockedCount; i++) {
         let defaultSt = gameData.defaultStations[i];
         let oldSt = savedStations.find(s => s.id === defaultSt.id);
-        let stObj = oldSt ? oldSt : JSON.parse(JSON.stringify(defaultSt));
-        
-        if (!stObj.baby) {
-            if (idleBabies.length > 0) {
-                stObj.baby = idleBabies.shift();
-            } else {
-                let assignedBabyIds = stations.filter(s => s.baby).map(s => s.baby.id);
-                let unassignedBaby = allBabies.find(b => !assignedBabyIds.includes(b.id));
-                if (unassignedBaby) {
-                    stObj.baby = unassignedBaby;
-                }
+        let stObj = oldSt ? JSON.parse(JSON.stringify(oldSt)) : JSON.parse(JSON.stringify(defaultSt));
+        stObj.baby = null; 
+        tempStations.push(stObj);
+    }
+
+    tempStations.forEach(st => {
+        let matchingBaby = allBabies.find(b => {
+            if (assignedBabyIds.has(b.id)) return false;
+            return b.traits && b.traits[st.name];
+        });
+
+        if (matchingBaby) {
+            st.baby = matchingBaby;
+            assignedBabyIds.add(matchingBaby.id);
+        }
+    });
+
+    tempStations.forEach(st => {
+        if (!st.baby) {
+            let availableBaby = allBabies.find(b => !assignedBabyIds.has(b.id));
+            if (availableBaby) {
+                st.baby = availableBaby;
+                assignedBabyIds.add(availableBaby.id);
             }
         }
-        stations.push(stObj);
-    }
+    });
+
+    stations = tempStations;
+    idleBabies = allBabies.filter(b => !assignedBabyIds.has(b.id));
 
     if (allBabies.length === 0 && gameData && gameData.babiesList) {
         const t1 = gameData.babiesList[0];
@@ -227,16 +248,17 @@ function loadUserData() {
             { id: Date.now() + 1, name: t1.name, gender: t1.gender, img: t1.img, traits: t1.traits, level: 1, xp: 0 },
             { id: Date.now() + 2, name: t2.name, gender: t2.gender, img: t2.img, traits: t2.traits, level: 1, xp: 0 }
         ];
-        idleBabies = [allBabies[1]];
-        if (stations.length > 0) stations[0].baby = allBabies[0];
+        loadUserData();
+        return;
     }
 
     let todayStr = new Date().toDateString();
-    if (currentUser.lastLoginDate !== todayStr) {
+    if (!currentUser.lastLoginDate || currentUser.lastLoginDate !== todayStr) {
         currentUser.lastLoginDate = todayStr;
         milkCount += 2;
         foodCount += 2;
         showToast("🎁 Günlük Giriş Ödülü: +2 Süt, +2 Mama kazandın!");
+        saveUserData();
     }
 
     let now = Date.now();
@@ -259,6 +281,7 @@ function loadUserData() {
         if (offlineSoup > 0) {
             soupCount += offlineSoup;
             gold += offlineGold;
+            earnedInCurrentLevel += offlineGold;
             showToast(`👋 Hoş Geldin! Ürün: +${formatNum(offlineSoup)}, Altın: +${formatNum(offlineGold)}`);
         }
     }
@@ -268,16 +291,34 @@ function saveUserData() {
     if (!currentUser || !gameData) return;
     let db = getDatabase();
     let index = db.users.findIndex(u => u.username === currentUser.username);
+    
+    let updatedUserJSON = { 
+        username: currentUser.username, 
+        password: currentUser.password, 
+        level: currentUser.level || 1,
+        registerDate: currentUser.registerDate || new Date().toLocaleDateString('tr-TR'),
+        gold, 
+        earnedInCurrentLevel, // Yeni seviye hedefi veritabanına kaydedilir
+        soupCount, 
+        milkCount, 
+        foodCount, 
+        hireCost, 
+        stations, 
+        allBabies, 
+        idleBabies, 
+        quests, 
+        avatar,
+        lastLoginDate: currentUser.lastLoginDate,
+        lastSaveTime: Date.now() 
+    };
+
     if (index !== -1) {
-        db.users[index] = { 
-            username: currentUser.username, password: currentUser.password, 
-            gold, soupCount, milkCount, foodCount, hireCost, stations, allBabies, idleBabies, quests, avatar,
-            level: currentUser.level,
-            lastLoginDate: currentUser.lastLoginDate,
-            lastSaveTime: Date.now() 
-        };
-        saveDatabase(db);
+        db.users[index] = updatedUserJSON;
+    } else {
+        db.users.push(updatedUserJSON);
     }
+    
+    saveDatabase(db);
 }
 
 function checkDynamicQuests() {
@@ -316,19 +357,25 @@ function checkRegisterEnter(event) {
 
 function updateUI() {
     if (!currentUser) return;
-    loadUserData(); 
+    
     checkLevelUp();
     checkDynamicQuests();
 
     let currentLevel = currentUser.level || 1;
+
+    document.getElementById("welcomeUser").innerText = currentUser.username;
+    let levelTextEl = document.getElementById("userLevelText");
+    if (levelTextEl) {
+        levelTextEl.innerText = `Sv.${currentLevel}`;
+    }
 
     document.getElementById("gold").innerText = formatNum(gold);
     document.getElementById("soupCount").innerText = formatNum(soupCount);
     document.getElementById("milkCount").innerText = formatNum(milkCount);
     document.getElementById("foodCount").innerText = formatNum(foodCount);
     document.getElementById("collectionCount").innerText = allBabies.length;
-    document.getElementById("stationCount").innerText = `${stations.length} (Sv.${currentLevel})`;
-
+    document.getElementById("stationCount").innerText = `${stations.length}`;
+    
     const container = document.getElementById("stationsContainer");
     container.innerHTML = "";
 
@@ -339,9 +386,9 @@ function updateUI() {
         if (st.baby) {
             cardClass += " working";
             let babyGlobalIndex = allBabies.findIndex(b => b.id === st.baby.id);
-            workerHTML = `<div class="station-worker-box" onclick="openBabyDetail(${babyGlobalIndex})" title="Bebeğin detayını aç"><img src="${st.baby.img}" alt="Bebek"></div>`;
+            workerHTML = `<div class="station-worker-box" onclick="openBabyDetail(${babyGlobalIndex}); event.stopPropagation();" title="Bebeğin detayını aç"><img src="${st.baby.img}" alt="Bebek"></div>`;
         } else {
-            workerHTML = `<div class="station-empty-badge" onclick="openCollection()" title="Bebek Ata">+</div>`;
+            workerHTML = `<div class="station-empty-badge" onclick="openCollection(); event.stopPropagation();" title="Bebek Ata">+</div>`;
         }
 
         container.innerHTML += `
@@ -401,26 +448,43 @@ function updateUI() {
 
 function hireBaby() {
     if (allBabies.length >= 20) {
-        showToast("Maksimum kapasiteye (20 bebek) ulaştın!");
+        showToast("Maksimum bebek kapasitesine (20 bebek) ulaştın!");
         return;
     }
     if (gold >= hireCost) {
         gold -= hireCost;
         hireCost = Math.floor(hireCost * 1.3);
+        
         const templateBaby = gameData.babiesList[Math.floor(Math.random() * gameData.babiesList.length)];
         const newBaby = {
             id: Date.now() + Math.random(),
-            name: templateBaby.name, gender: templateBaby.gender, img: templateBaby.img,
-            traits: templateBaby.traits, level: 1, xp: 0
+            name: templateBaby.name, 
+            gender: templateBaby.gender, 
+            img: templateBaby.img,
+            traits: templateBaby.traits, 
+            level: 1, 
+            xp: 0
         };
         allBabies.push(newBaby); 
 
-        const emptySt = stations.find(s => s.baby === null);
-        if (emptySt) {
-            emptySt.baby = newBaby;
-        } else {
-            idleBabies.push(newBaby);
+        let assigned = false;
+        for (let st of stations) {
+            if (!st.baby && newBaby.traits && newBaby.traits[st.name]) {
+                st.baby = newBaby;
+                assigned = true;
+                break;
+            }
         }
+
+        if (!assigned) {
+            let emptySt = stations.find(s => s.baby === null);
+            if (emptySt) {
+                emptySt.baby = newBaby;
+            } else {
+                idleBabies.push(newBaby);
+            }
+        }
+
         updateUI();
     } else {
         showToast("Yeterli altın yok! 🪙");
@@ -476,14 +540,17 @@ function upgradeStation(id) {
 function claimQuest(id) {
     const q = quests.find(qu => qu.id === id);
     if (q && q.completed) {
-        if (q.rewardType === 'milk') milkCount += q.rewardCount;
-        else foodCount += q.rewardCount;
+        if (q.rewardType === 'milk') {
+            milkCount += q.rewardCount;
+        } else {
+            foodCount += q.rewardCount;
+        }
 
         showToast(`🎁 Ödül Alındı: +${q.rewardCount} ${q.rewardType === 'milk' ? 'Süt 🍼' : 'Mama 🥣'}`);
 
         q.current = 0;
         q.target = Math.floor(q.target * 2); 
-        q.rewardCount = Math.floor(q.rewardCount * 1.5);
+        q.rewardCount = 2;
         
         if (q.type === 'produce') q.desc = `${q.target} Ürün Üret`;
         else if (q.type === 'hire') q.desc = `${q.target} Bebek İşe Al`;
@@ -501,33 +568,25 @@ function openProfileModal() {
     const content = document.getElementById("profileContent");
     
     let currentLevel = currentUser.level || 1;
-    let requiredGold = currentLevel * 2500;
-    let requiredSoup = currentLevel * 300;
+    let requiredGold = currentLevel * 100000;
+    let requiredSoup = currentLevel * 2000;
 
-    let goldPercent = Math.min(100, (gold / requiredGold) * 100);
-    let soupPercent = Math.min(100, (soupCount / requiredSoup) * 100);
-    
+    // BUG DÜZELTİLDİ: Artık ilerleme çubuğu doğrudan global 'earnedInCurrentLevel' değişkenini okur. 
+    // Para harcansa da bu değişken asla azalmaz, sadece seviye atlayınca sıfırlanır.
+    let currentEarned = earnedInCurrentLevel; 
+    let goldPercent = Math.min(100, (currentEarned / requiredGold) * 100);
+    let soupPercent = Math.min(100, (soupCount / requiredSoup) * 100); 
+
     let avatarListHTML = `<div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:10px 0;">`;
     gameData.babiesList.forEach(b => {
         avatarListHTML += `<img src="${b.img}" onclick="changeAvatar('${b.img}')" style="width:45px; height:45px; border-radius:50%; object-fit:cover; cursor:pointer; border:2px solid ${avatar === b.img ? '#ff5c8a':'transparent'}">`;
     });
     avatarListHTML += `</div>`;
 
-    content.innerHTML = `
-        <span class="close-btn" onclick="closeProfileModal()">✕</span>
-        <img src="${avatar}" style="width:90px; height:90px; border-radius:50%; object-fit:cover; border:3px solid #ff8fab; margin-bottom:10px;">
-        <h3>${currentUser.username}</h3>
-        <p style="margin:4px 0; color:#ff5c8a; font-weight:bold;">Seviye: ${currentLevel}</p>
-        <p>🪙 Para: <strong>${formatNum(gold)}</strong></p>
-        <p>🍼 Süt: <strong>${milkCount}</strong> | 🥣 Mama: <strong>${foodCount}</strong></p>
-        <p>👶 Bebek Sayısı: <strong>${allBabies.length}</strong></p>
-        <p>🏠 Açık Tesis: <strong>${stations.length}/20</strong></p>
-        
-        <hr style="border:1px solid #ffd1dc; margin:10px 0;">
-        <p style="font-size:0.8rem; font-weight:bold; margin-bottom:4px;">Seviye İlerlemesi (Sv.${currentLevel} -> Sv.${currentLevel + 1}):</p>
-        
+    let levelStatusText = currentLevel >= 20 ? "Maksimum Seviye (20)" : `Seviye İlerlemesi (Sv.${currentLevel} -> Sv.${currentLevel + 1}):`;
+    let progressBarHTML = currentLevel >= 20 ? `<p style="color:#ff5c8a; font-weight:bold;">Tebrikler! En yüksek seviyedesin. 👑</p>` : `
         <div style="text-align:left; font-size:0.75rem; margin-bottom:6px;">
-            <span>Altın Hedefi (${formatNum(gold)} / ${formatNum(requiredGold)}):</span>
+            <span>Altın Hedefi (${formatNum(currentEarned)} / ${formatNum(requiredGold)}):</span>
             <div class="xp-container" style="margin:2px 0 6px 0;">
                 <div class="xp-fill" style="width: ${goldPercent}%; background: linear-gradient(135deg, #ffd166, #ffb703);"></div>
             </div>
@@ -536,10 +595,26 @@ function openProfileModal() {
                 <div class="xp-fill" style="width: ${soupPercent}%;"></div>
             </div>
         </div>
+    `;
+
+    content.innerHTML = `
+        <span class="close-btn" onclick="closeProfileModal()">✕</span>
+        <img src="${avatar}" style="width:90px; height:90px; border-radius:50%; object-fit:cover; border:3px solid #ff8fab; margin-bottom:10px;">
+        <h3>${currentUser.username}</h3>
+        <p style="margin:4px 0; color:#ff5c8a; font-weight:bold;">Seviye: ${currentLevel}</p>
+        <p>🍼 Süt: <strong>${milkCount}</strong> | 🥣 Mama: <strong>${foodCount}</strong></p>
+        <p>👶 Bebek Sayısı: <strong>${allBabies.length}</strong></p>
+        <p>🏠 Açık Tesis: <strong>${stations.length}/20</strong></p>
+        
+        <hr style="border:1px solid #ffd1dc; margin:10px 0;">
+        <p style="font-size:0.8rem; font-weight:bold; margin-bottom:4px;">${levelStatusText}</p>
+        ${progressBarHTML}
 
         <hr style="border:1px solid #ffd1dc; margin:10px 0;">
         <p style="font-size:0.8rem; font-weight:bold;">Avatarını Seç:</p>
         ${avatarListHTML}
+
+        <button class="game-btn fire-btn" onclick="handleDeleteAccount()" style="width:100%; margin-top:15px; background:#d83b68; color:white;">Hesabımı Kalıcı Olarak Sil ❌</button>
     `;
     modal.style.display = "flex";
 }
@@ -564,9 +639,8 @@ function openPlayersListModal() {
     } else {
         db.users.forEach(u => {
             let uBabies = u.allBabies ? u.allBabies.length : 0;
-            let uGold = u.gold ? formatNum(u.gold) : 0;
             let uAvatar = u.avatar || "baby1.jpg";
-            let uLevel = u.level || (1 + Math.floor((u.soupCount || 0) / 50));
+            let uLevel = u.level || (1 + Math.floor((u.soupCount || 0) / 2000));
             
             content.innerHTML += `
                 <div style="display:flex; align-items:center; justify-content:space-between; background:#fff0f3; padding:8px; border-radius:8px; margin-bottom:6px; cursor:pointer;" onclick="openOtherPlayerDetail('${u.username}')">
@@ -574,7 +648,7 @@ function openPlayersListModal() {
                         <img src="${uAvatar}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
                         <span style="font-weight:bold; font-size:0.85rem;">${u.username} (Sv.${uLevel})</span>
                     </div>
-                    <span style="font-size:0.75rem; color:#777;">👶 ${uBabies} | 🪙 ${uGold}</span>
+                    <span style="font-size:0.75rem; color:#777;">👶 ${uBabies}</span>
                 </div>
             `;
         });
@@ -594,16 +668,14 @@ function openOtherPlayerDetail(username) {
     const content = document.getElementById("otherPlayerContent");
 
     let tBabies = targetUser.allBabies ? targetUser.allBabies.length : 0;
-    let tGold = targetUser.gold ? formatNum(targetUser.gold) : 0;
     let tStations = targetUser.stations ? targetUser.stations.length : 2;
     let tAvatar = targetUser.avatar || "baby1.jpg";
-    let tLevel = targetUser.level || (1 + Math.floor((targetUser.soupCount || 0) / 50));
+    let tLevel = targetUser.level || (1 + Math.floor((targetUser.soupCount || 0) / 2000));
 
     content.innerHTML = `
         <span class="close-btn" onclick="closeOtherPlayerModal()">✕</span>
         <img src="${tAvatar}" style="width:90px; height:90px; border-radius:50%; object-fit:cover; border:3px solid #ff8fab; margin-bottom:10px;">
         <h3>${targetUser.username} (Sv.${tLevel})</h3>
-        <p>🪙 Para: <strong>${tGold}</strong></p>
         <p>👶 Bebek Sayısı: <strong>${tBabies}</strong></p>
         <p>🏠 Tesis Sayısı: <strong>${tStations}/20</strong></p>
     `;
@@ -735,22 +807,35 @@ function checkLevelUp() {
     if (!currentUser) return;
     
     let currentLevel = currentUser.level || 1;
-    let requiredGold = currentLevel * 2500;
-    let requiredSoup = currentLevel * 300;
 
-    if (gold >= requiredGold && soupCount >= requiredSoup) {
+    if (currentLevel >= 20) {
+        return; 
+    }
+
+    let requiredGold = currentLevel * 100000;
+    let requiredSoup = currentLevel * 2000;
+
+    if (earnedInCurrentLevel >= requiredGold && soupCount >= requiredSoup) {
         currentUser.level = currentLevel + 1;
         let newLvl = currentUser.level;
 
-        let rewardGold = newLvl * 500; 
+        if (newLvl >= 20) {
+            currentUser.level = 20;
+            showMaxLevelModal();
+            saveUserData();
+            return;
+        }
+
+        let rewardGold = newLvl * 2000; 
         let rewardMilk = 2;            
         let rewardFood = 2;            
 
         gold += rewardGold;
         milkCount += rewardMilk;
         foodCount += rewardFood;
+        earnedInCurrentLevel = 0; // Seviye atlandığı an sayaç sıfırlanır, yeni seviye için sıfırdan başlar
 
-        if (gameData && gameData.babiesList) {
+        if (gameData && gameData.babiesList && allBabies.length < 20) {
             let randomTemplate = gameData.babiesList[Math.floor(Math.random() * gameData.babiesList.length)];
             let newBaby = {
                 id: Date.now() + Math.random(),
@@ -785,6 +870,19 @@ function showLevelUpModal(level, rGold, rMilk, rFood) {
     modal.style.display = "flex";
 }
 
+function showMaxLevelModal() {
+    const modal = document.getElementById("levelUpModal");
+    const rewardsText = document.getElementById("levelUpRewards");
+    
+    rewardsText.innerHTML = `
+        Tebrikler Miriy! 👑<br><br>
+        Şu anda <strong>maksimum seviyedesiniz (Seviye 20)</strong>!<br>
+        Tesislerinizi ve bebek kapasitenizi zirveye ulaştırdınız! 🎉
+    `;
+    
+    modal.style.display = "flex";
+}
+
 function closeLevelUpModal() {
     document.getElementById("levelUpModal").style.display = "none";
     updateUI();
@@ -793,6 +891,7 @@ function closeLevelUpModal() {
 setInterval(() => {
     if (!currentUser || !gameData) return;
     let progressMade = false;
+    
     stations.forEach(st => {
         if (st.baby) {
             let trait = st.baby.traits && st.baby.traits[st.name] ? st.baby.traits[st.name] : { multiplier: 1.0 };
@@ -802,7 +901,12 @@ setInterval(() => {
             st.progress += st.productionRate * spd * 5;
 
             if (st.progress >= 100) {
-                st.progress = 0; soupCount += 1; gold += 5 * st.level; progressMade = true;
+                st.progress = 0; 
+                soupCount += 1; 
+                let earned = 5 * st.level;
+                gold += earned; 
+                earnedInCurrentLevel += earned; // O seviyedeki toplam kazanılan altına eklenir
+                progressMade = true;
                 
                 let prodQuest = quests.find(q => q.type === 'produce' && !q.completed);
                 if (prodQuest) {
@@ -812,5 +916,20 @@ setInterval(() => {
             }
         }
     });
-    if (progressMade) updateUI();
+    
+    if (progressMade) {
+        updateUI();
+    }
 }, 200);
+
+function handleDeleteAccount() {
+    if (!currentUser) return;
+    
+    if (confirm("Hesabını ve tüm ilerlemeni kalıcı olarak silmek istediğine emin misin? Bu işlem geri alınamaz!")) {
+        let db = getDatabase();
+        db.users = db.users.filter(u => u.username !== currentUser.username);
+        saveDatabase(db);
+        handleLogout();
+        showToast("Hesabın başarıyla silindi.");
+    }
+}
